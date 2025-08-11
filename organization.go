@@ -2,6 +2,7 @@ package sentry
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"time"
 )
@@ -29,6 +30,17 @@ type Organization struct {
 	ID                   *string    `json:"id,omitempty"`
 	IsEarlyAdopter       *bool      `json:"isEarlyAdopter,omitempty"`
 	Features             *[]string  `json:"features,omitempty"`
+}
+
+type organizationRequest struct {
+	Project string `json:"project,omitempty"`
+}
+
+func (o *organizationRequest) ToQueryString() string {
+	query := url.Values{}
+	query.Add("project", string(o.Project))
+
+	return query.Encode()
 }
 
 // GetOrganization takes a org slug and returns back the org
@@ -85,4 +97,16 @@ func (c *Client) GetOrganizationTeams(o Organization) ([]Team, error) {
 	teams := make([]Team, 0)
 	err := c.do("GET", fmt.Sprintf("organizations/%s/teams", *o.Slug), &teams, nil)
 	return teams, err
+}
+
+// GetOrganizationEvents will fetch all events for a given org and project
+func (c *Client) GetOrganizationEvents(o Organization, projectSlug string) ([]Event, error) {
+	events := make([]Event, 0)
+
+	orgRequest := &organizationRequest{
+		Project: projectSlug,
+	}
+
+	_, err := c.doWithPaginationQuery("GET", fmt.Sprintf("organizations/%s/events", *o.Slug), &events, nil, orgRequest)
+	return events, err
 }
