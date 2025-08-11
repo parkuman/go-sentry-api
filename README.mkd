@@ -1,5 +1,5 @@
 # Go Sentry API
-[![Go Reference](https://pkg.go.dev/badge/github.com/atlassian/go-sentry-api.svg)](https://pkg.go.dev/github.com/atlassian/go-sentry-api)
+[![Go Reference](https://pkg.go.dev/badge/github.com/parkuman/go-sentry-api.svg)](https://pkg.go.dev/github.com/parkuman/go-sentry-api)
 
 
 This is a library that implements a client in go for the [sentry api](http://www.sentry.io/api/). It supports all the endpoints and can do a good bit. For a full reference you can check the godoc link above.
@@ -11,7 +11,7 @@ This is a library that implements a client in go for the [sentry api](http://www
 import (
 	"fmt"
 
-	"github.com/atlassian/go-sentry-api"
+	"github.com/parkuman/go-sentry-api"
 )
 // Auth token is always required, secondary is endpoint and third is timeout defaults 60 seconds
 client, _:= sentry.NewClient("yourauthtokengoeshere", nil, nil)
@@ -38,10 +38,10 @@ fmt.Printf(key.DSN.Secret)
 ```
 ## Installation
 ```
-go get github.com/atlassian/go-sentry-api
+go get github.com/parkuman/go-sentry-api
 ```
 ## Documentation
-[![Go Reference](https://pkg.go.dev/badge/github.com/atlassian/go-sentry-api.svg)](https://pkg.go.dev/github.com/atlassian/go-sentry-api)
+[![Go Reference](https://pkg.go.dev/badge/github.com/parkuman/go-sentry-api.svg)](https://pkg.go.dev/github.com/parkuman/go-sentry-api)
 
 ## Tests
 To run tests you can setup a local sentry instance via docker. There is a
