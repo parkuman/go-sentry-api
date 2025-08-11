@@ -3,6 +3,7 @@ package sentry
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/parkuman/go-sentry-api/datatype"
@@ -83,6 +84,18 @@ type Event struct {
 	GroupID         *string                 `json:"groupID,omitempty"`
 }
 
+// for building the query string of the /organizations/:org/events endpoint
+type organizationEventsRequest struct {
+	Project string `json:"project,omitempty"`
+}
+
+func (o *organizationEventsRequest) ToQueryString() string {
+	query := url.Values{}
+	query.Add("project", string(o.Project))
+
+	return query.Encode()
+}
+
 // GetProjectEvent will fetch a event on a project
 func (c *Client) GetProjectEvent(o Organization, p Project, eventID string) (Event, error) {
 	var event Event
@@ -102,4 +115,16 @@ func (c *Client) GetOldestEvent(i Issue) (Event, error) {
 	var event Event
 	err := c.do("GET", fmt.Sprintf("issues/%s/events/oldest", *i.ID), &event, nil)
 	return event, err
+}
+
+// GetOrganizationEvents will fetch all events for a given org and project
+func (c *Client) GetOrganizationEvents(o Organization, p Project) ([]Event, error) {
+	events := make([]Event, 0)
+
+	orgRequest := &organizationEventsRequest{
+		Project: *p.Slug,
+	}
+
+	_, err := c.doWithPaginationQuery("GET", fmt.Sprintf("organizations/%s/events", *o.Slug), &events, nil, orgRequest)
+	return events, err
 }
