@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/parkuman/go-sentry-api/datatype"
@@ -84,16 +85,210 @@ type Event struct {
 	GroupID         *string                 `json:"groupID,omitempty"`
 }
 
-// for building the query string of the /organizations/:org/events endpoint
-type organizationEventsRequest struct {
-	Project string `json:"project,omitempty"`
+// EventStatsSet represents a set of statistics for an event.
+type EventStatsSet struct {
+	Data          []EventStatsPoint           `json:"data"`
+	Confidence    []EventStatsConfidencePoint `json:"confidence"`
+	Order         int                         `json:"order"`
+	IsMetricsData bool                        `json:"isMetricsData"`
+	Start         int64                       `json:"start"`
+	End           int64                       `json:"end"`
+	Meta          json.RawMessage             `json:"meta"`
 }
 
-func (o *organizationEventsRequest) ToQueryString() string {
-	query := url.Values{}
-	query.Add("project", string(o.Project))
+// EventStatsPoint represents a single data point in an event's statistics.
+type EventStatsPoint struct {
+	Timestamp int64
+	Values    []EventStatsPointValue
+}
 
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (p *EventStatsPoint) UnmarshalJSON(data []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if len(raw) != 2 {
+		return fmt.Errorf("expected array of length 2, got %d", len(raw))
+	}
+	if err := json.Unmarshal(raw[0], &p.Timestamp); err != nil {
+		return err
+	}
+	return json.Unmarshal(raw[1], &p.Values)
+}
+
+// EventStatsPointValue represents the value of a data point.
+type EventStatsPointValue struct {
+	Count json.Number `json:"count"`
+}
+
+// EventStatsConfidencePoint represents a confidence data point.
+type EventStatsConfidencePoint struct {
+	Timestamp int64
+	Values    []EventStatsConfidencePointValue
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (p *EventStatsConfidencePoint) UnmarshalJSON(data []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if len(raw) != 2 {
+		return fmt.Errorf("expected array of length 2, got %d", len(raw))
+	}
+	if err := json.Unmarshal(raw[0], &p.Timestamp); err != nil {
+		return err
+	}
+	return json.Unmarshal(raw[1], &p.Values)
+}
+
+// EventStatsConfidencePointValue represents the value of a confidence point.
+type EventStatsConfidencePointValue struct {
+	Count *string `json:"count"`
+}
+
+// for building the query string of the /organizations/:org/events-stats endpoint
+type EventsStatsRequest struct {
+	Dataset      string
+	End          *time.Time
+	Environment  string
+	ExcludeOther bool
+	Field        []string
+	Interval     string
+	OrderBy      string
+	Partial      bool
+	PerPage      int
+	Project      []string // Project IDs
+	Query        string
+	Referrer     string
+	Sampling     string
+	Sort         string
+	Start        *time.Time
+	UTC          bool
+	YAxis        []string
+}
+
+func (r *EventsStatsRequest) ToQueryString() string {
+	query := url.Values{}
+
+	query.Add("excludeOther", strconv.Itoa(btoi(r.ExcludeOther)))
+	query.Add("partial", strconv.Itoa(btoi(r.Partial)))
+	query.Add("per_page", strconv.Itoa(r.PerPage))
+	query.Add("utc", strconv.FormatBool(r.UTC))
+
+	if r.Dataset != "" {
+		query.Add("dataset", r.Dataset)
+	}
+	if r.End != nil {
+		query.Add("end", r.End.UTC().Format("2006-01-02T15:04:05.999Z"))
+	}
+	if r.Environment != "" {
+		query.Add("environment", r.Environment)
+	}
+	for _, f := range r.Field {
+		query.Add("field", f)
+	}
+	if r.Interval != "" {
+		query.Add("interval", r.Interval)
+	}
+	if r.OrderBy != "" {
+		query.Add("orderby", r.OrderBy)
+	}
+	for _, p := range r.Project {
+		query.Add("project", p)
+	}
+	if r.Query != "" {
+		query.Add("query", r.Query)
+	}
+	if r.Referrer != "" {
+		query.Add("referrer", r.Referrer)
+	}
+	if r.Sampling != "" {
+		query.Add("sampling", r.Sampling)
+	}
+	if r.Sort != "" {
+		query.Add("sort", r.Sort)
+	}
+	if r.Start != nil {
+		query.Add("start", r.Start.UTC().Format("2006-01-02T15:04:05.999Z"))
+	}
+	for _, y := range r.YAxis {
+		query.Add("yAxis", y)
+	}
 	return query.Encode()
+}
+
+// btoi is a helper to convert bool to int (0 or 1)
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// for building the query string of the /organizations/:org/events endpoint
+type EventsRequest struct {
+	Dataset     string
+	End         *time.Time
+	Environment string
+	Field       []string
+	PerPage     int
+	Project     []string // Project slugs
+	Query       string
+	Referrer    string
+	Sampling    string
+	Sort        []string
+	Start       *time.Time
+	UTC         bool
+}
+
+func (r *EventsRequest) ToQueryString() string {
+	query := url.Values{}
+
+	query.Add("per_page", strconv.Itoa(r.PerPage))
+	query.Add("utc", strconv.FormatBool(r.UTC))
+
+	if r.Dataset != "" {
+		query.Add("dataset", r.Dataset)
+	}
+	if r.End != nil {
+		query.Add("end", r.End.UTC().Format("2006-01-02T15:04:05.999Z"))
+	}
+	if r.Environment != "" {
+		query.Add("environment", r.Environment)
+	}
+	for _, f := range r.Field {
+		query.Add("field", f)
+	}
+	for _, p := range r.Project {
+		query.Add("project", p)
+	}
+	if r.Query != "" {
+		query.Add("query", r.Query)
+	}
+	if r.Referrer != "" {
+		query.Add("referrer", r.Referrer)
+	}
+	if r.Sampling != "" {
+		query.Add("sampling", r.Sampling)
+	}
+	for _, s := range r.Sort {
+		query.Add("sort", s)
+	}
+	if r.Start != nil {
+		query.Add("start", r.Start.UTC().Format("2006-01-02T15:04:05.999Z"))
+	}
+	return query.Encode()
+}
+
+// EventData represents a single data object in the events response with dynamic fields.
+type EventData map[string]interface{}
+
+// EventsResponse represents the response from the organization events endpoint with dynamic fields.
+type EventsResponse struct {
+	Data []EventData     `json:"data"`
+	Meta json.RawMessage `json:"meta"`
 }
 
 // GetProjectEvent will fetch a event on a project
@@ -117,14 +312,16 @@ func (c *Client) GetOldestEvent(i Issue) (Event, error) {
 	return event, err
 }
 
-// GetOrganizationEvents will fetch all events for a given org and project
-func (c *Client) GetOrganizationEvents(o Organization, p Project) ([]Event, error) {
-	events := make([]Event, 0)
-
-	orgRequest := &organizationEventsRequest{
-		Project: *p.Slug,
-	}
-
-	_, err := c.doWithPaginationQuery("GET", fmt.Sprintf("organizations/%s/events", *o.Slug), &events, nil, orgRequest)
+// GetEvents will fetch all events for a given org and project
+func (c *Client) GetEvents(o Organization, params *EventsRequest) (EventsResponse, error) {
+	events := EventsResponse{}
+	_, err := c.doWithPaginationQuery("GET", fmt.Sprintf("organizations/%s/events", *o.Slug), &events, nil, params)
 	return events, err
+}
+
+// GetEventsStats will fetch stats for events for a given org and project
+func (c *Client) GetEventsStats(o Organization, params *EventsStatsRequest) (map[string]EventStatsSet, error) {
+	stats := make(map[string]EventStatsSet)
+	_, err := c.doWithPaginationQuery("GET", fmt.Sprintf("organizations/%s/events-stats", *o.Slug), &stats, nil, params)
+	return stats, err
 }
