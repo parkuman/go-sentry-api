@@ -2,6 +2,7 @@ package sentry
 
 import (
 	"testing"
+	"time"
 
 	"github.com/parkuman/go-sentry-api/datatype"
 )
@@ -85,3 +86,50 @@ func TestEventsResource(t *testing.T) {
 	})
 
 }
+
+func TestEventsEndpoints(t *testing.T) {
+	client := newTestClient(t)
+	org, err := client.GetOrganization(getDefaultOrg())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	team, cleanupTeam := createTeamHelper(t)
+	defer cleanupTeam()
+
+	project, cleanupProject := createProjectHelper(t, team)
+	defer cleanupProject()
+
+	createMessagesHelper(t, client, org, project, 5)
+
+	// Give Sentry a moment to process the events
+	time.Sleep(2 * time.Second)
+
+	t.Run("GetEvents", func(t *testing.T) {
+		params := &EventsRequest{
+			Project: []string{*project.Slug},
+		}
+		events, err := client.GetEvents(org, params)
+		if err != nil {
+			t.Fatalf("GetEvents failed: %s", err)
+		}
+		if len(events.Data) == 0 {
+			t.Fatal("GetEvents returned no events")
+		}
+	})
+
+	t.Run("GetEventsStats", func(t *testing.T) {
+		params := &EventsStatsRequest{
+			Project: []string{project.ID},
+			YAxis:   []string{"count()"},
+		}
+		stats, err := client.GetEventsStats(org, params)
+		if err != nil {
+			t.Fatalf("GetEventsStats failed: %s", err)
+		}
+		if len(stats) == 0 {
+			t.Fatal("GetEventsStats returned no stats")
+		}
+	})
+}
+
